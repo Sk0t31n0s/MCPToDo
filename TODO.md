@@ -1,4 +1,4 @@
-# TODO: Security and Functionality Improvements
+# TODO - MCP Todo List Manager Development Tasks
 
 ## Critical Security Fixes
 
@@ -80,12 +80,17 @@
   - Better error messages for MCP clients
   - Validation error details
 
-- [x] **Testing** ✅ **COMPLETED**
-  - ✅ Unit tests for all tools (16 tests implemented)
-  - ✅ Integration tests for file operations  
+- [x] **Testing** ✅ **COMPLETED**  
+  - ✅ Comprehensive test suite (21 tests implemented)
+  - ✅ Unit tests for all core functions and MCP tools
+  - ✅ Integration and logging tests
   - ✅ Edge case testing (non-existent IDs, empty files, etc.)
+  - [x] **MCP Server API Update** ✅ **COMPLETED**
+  - ✅ Fixed server initialization for current MCP framework  
+  - ✅ Updated decorators to @server.list_tools() and @server.call_tool()
+  - ✅ Corrected STDIO server setup
   - [ ] Security test cases for malicious inputs (still needed)
-  - [ ] Performance tests for large todo lists
+  - [ ] Performance tests for large todo lists  
   - [ ] Code coverage reporting
 
 - [ ] **Documentation**
@@ -128,30 +133,36 @@
 
 ## Testing Status
 
-### ✅ Completed (January 2025)
-**Comprehensive test suite implemented with 16 tests covering:**
+### ✅ Completed (September 2025)
+**Comprehensive test suite with 21 tests covering:**
 
-- **Helper Functions** (5 tests):
+- **Helper Functions** (6 tests):
   - `load_todos()`: File not exists, empty file, valid data scenarios  
-  - `save_todos()`: Atomic write operations
+  - `save_todos()`: Atomic write operations, secure permissions
   - `current_timestamp()`: ISO 8601 format validation
 
 - **MCP Tools** (9 tests):
-  - `list_todos()`: Empty list handling
-  - `add_todo()`: Single and multiple todo creation
+  - `list_todos()`: Empty and populated list handling
+  - `add_todo()`: Single and multiple todo creation  
   - `complete_todo()`: Existing and non-existent ID handling
   - `delete_todo()`: Proper cleanup and error cases
   - `get_timestamp()`: Utility function validation
 
+- **Logging Tests** (4 tests):
+  - Log level configuration
+  - File output logging  
+  - MCP request logging
+  - Error logging
+
 - **Integration Tests** (2 tests):
   - Complete workflow: create → complete → delete
-  - Data persistence across load/save operations
+  - Data persistence across operations
 
 **Test Infrastructure:**
 - Isolated test environment with temporary files
-- Proper setup/teardown for each test case
-- Direct function testing without MCP server dependency
-- All tests pass with 100% success rate
+- Proper setup/teardown for each test case  
+- Direct function testing without server dependency
+- ✅ All 21 tests pass with 100% success rate
 
 ### 🎯 Next Testing Priorities
 1. Security test cases for malicious YAML inputs

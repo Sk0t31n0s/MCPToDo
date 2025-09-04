@@ -1,42 +1,40 @@
-# Todo List Manager MCP Server
+# MCP Todo List Manager
 
-A proof-of-concept MCP (Model Context Protocol) server that provides todo list management functionality through a simple YAML-based storage system.
+A Model Context Protocol (MCP) server that provides todo list management functionality with YAML-based persistence. This server integrates with Claude Desktop and other MCP clients to offer natural language todo management.
 
 ## Features
 
 - **List todos**: View all todo items with their status and timestamps
-- **Add todos**: Create new todo items with automatic timestamp tracking
+- **Add todos**: Create new todo items with automatic timestamp tracking  
 - **Complete todos**: Mark items as done with completion timestamps
 - **Delete todos**: Remove todo items by ID
 - **System timestamp**: Independent utility for fetching current time
 
-## Architecture
+## Quick Start
 
-The server implements a simple file-based persistence layer using YAML storage with the following characteristics:
-
-- **Data Format**: YAML file structure for human readability
-- **Atomic Writes**: Safe file operations using temporary files to prevent corruption
-- **UUID Identifiers**: Unique identifiers for each todo item
-- **Timestamp Tracking**: ISO 8601 format timestamps for creation and completion
-
-## Installation
-
-1. **Clone the repository**:
+1. **Clone and setup**:
    ```bash
    git clone <repository-url>
-   cd MCPPoc
-   ```
-
-2. **Set up Python environment**:
-   ```bash
+   cd MCPToDo
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies**:
-   ```bash
    pip install -r requirements.txt
    ```
+
+2. **Run the server**:
+   ```bash
+   python main.py
+   ```
+
+3. **Test with Claude Desktop** (see [Integration Guide](claude-desktop-integration.md))
+
+## Architecture
+
+- **Single-file MCP server**: `main.py` contains the complete implementation
+- **YAML persistence**: Human-readable storage in `~/.todos.yaml`
+- **Atomic writes**: Safe file operations prevent data corruption
+- **UUID identifiers**: Unique identifiers for each todo item
+- **ISO 8601 timestamps**: Standard timestamp format for creation and completion
 
 ## Usage
 
@@ -177,10 +175,10 @@ pytest test_main.py
 
 Check code style:
 ```bash
-flake8 main.py test_main.py
+flake8 main.py
 ```
 
-**Current Status**: Tests pass with minor style warnings (whitespace, line length)
+**Current Status**: ✅ All 21 tests pass. Minor style warnings present (line length, whitespace)
 
 ### Development Setup
 

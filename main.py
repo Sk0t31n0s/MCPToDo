@@ -25,6 +25,8 @@ from pathlib import Path
 from typing import List, Optional
 
 from mcp.server import Server
+from mcp.types import Tool, TextContent
+import json
 from ruamel.yaml import YAML
 
 # ----------------------------------------------------------------------
@@ -123,12 +125,7 @@ def current_timestamp() -> str:
 # MCP Server Setup
 # ----------------------------------------------------------------------
 
-server = None
-
-def initialize_server():
-    """Initialize the MCP server - call this when running as main"""
-    global server
-    server = Server("todo-list-manager")
+server = Server("todo-list-manager")
 
 
 def list_todos() -> List[dict]:
@@ -200,79 +197,124 @@ def get_timestamp() -> str:
     return timestamp
 
 
-def setup_mcp_tools():
-    """Setup MCP tools - call after initializing server"""
-    if server is None:
-        raise RuntimeError("Server must be initialized before setting up tools")
+@server.list_tools()
+async def handle_list_tools():
+    """List available tools"""
+    return [
+        Tool(
+            name="list_todos",
+            description="List all todo items stored in the YAML file",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        Tool(
+            name="add_todo",
+            description="Add a new todo item with system timestamp",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string", "description": "Todo description"}
+                },
+                "required": ["description"]
+            }
+        ),
+        Tool(
+            name="complete_todo",
+            description="Mark a todo as completed by ID",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "Todo item ID"}
+                },
+                "required": ["id"]
+            }
+        ),
+        Tool(
+            name="delete_todo",
+            description="Delete a todo item by ID",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "Todo item ID"}
+                },
+                "required": ["id"]
+            }
+        ),
+        Tool(
+            name="get_timestamp",
+            description="Fetch current system timestamp in ISO 8601 format",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+    ]
+
+@server.call_tool()
+async def handle_call_tool(name: str, arguments: dict):
+    """Handle tool calls"""
+    if name == "list_todos":
+        result = list_todos()
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
     
-    @server.tool(
-        name="list_todos",
-        description="List all todo items stored in the YAML file"
-    )
-    def _list_todos():
-        return list_todos()
-
-    @server.tool(
-        name="add_todo",
-        description="Add a new todo item with system timestamp",
-        parameters={
-            "type": "object",
-            "properties": {
-                "description": {"type": "string", "description": "Todo description"}
-            },
-            "required": ["description"]
-        }
-    )
-    def _add_todo(description: str):
-        return add_todo(description)
-
-    @server.tool(
-        name="complete_todo",
-        description="Mark a todo as completed by ID",
-        parameters={
-            "type": "object",
-            "properties": {
-                "id": {"type": "string", "description": "Todo item ID"}
-            },
-            "required": ["id"]
-        }
-    )
-    def _complete_todo(id: str):
-        return complete_todo(id)
-
-    @server.tool(
-        name="delete_todo",
-        description="Delete a todo item by ID",
-        parameters={
-            "type": "object",
-            "properties": {
-                "id": {"type": "string", "description": "Todo item ID"}
-            },
-            "required": ["id"]
-        }
-    )
-    def _delete_todo(id: str):
-        return delete_todo(id)
-
-    @server.tool(
-        name="get_timestamp",
-        description="Fetch current system timestamp in ISO 8601 format"
-    )
-    def _get_timestamp():
-        return get_timestamp()
+    elif name == "add_todo":
+        description = arguments.get("description")
+        if not description:
+            return [TextContent(type="text", text="Error: description parameter is required")]
+        result = add_todo(description)
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    
+    elif name == "complete_todo":
+        todo_id = arguments.get("id")
+        if not todo_id:
+            return [TextContent(type="text", text="Error: id parameter is required")]
+        result = complete_todo(todo_id)
+        if result:
+            return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        else:
+            return [TextContent(type="text", text=f"Error: Todo with ID '{todo_id}' not found")]
+    
+    elif name == "delete_todo":
+        todo_id = arguments.get("id")
+        if not todo_id:
+            return [TextContent(type="text", text="Error: id parameter is required")]
+        result = delete_todo(todo_id)
+        if result:
+            return [TextContent(type="text", text=f"Todo with ID '{todo_id}' deleted successfully")]
+        else:
+            return [TextContent(type="text", text=f"Error: Todo with ID '{todo_id}' not found")]
+    
+    elif name == "get_timestamp":
+        result = get_timestamp()
+        return [TextContent(type="text", text=result)]
+    
+    else:
+        return [TextContent(type="text", text=f"Error: Unknown tool '{name}'")]
 
 
 # ----------------------------------------------------------------------
 # Entrypoint
 # ----------------------------------------------------------------------
 
-if __name__ == "__main__":
+async def main():
     # Setup logging first
     setup_logging()
     logger.info("Todo List Manager MCP Server starting...")
     
-    # Initialize and run the MCP server
-    initialize_server()
-    setup_mcp_tools()
+    # Import stdio server utilities
+    from mcp.server.stdio import stdio_server
+    
+    # Run the MCP server with STDIO transport
     logger.info("MCP server initialized, starting server...")
-    server.run()
+    async with stdio_server() as streams:
+        await server.run(
+            streams[0], streams[1], server.create_initialization_options()
+        )
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
