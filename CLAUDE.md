@@ -42,7 +42,7 @@ flake8 main.py
 - Implements atomic file writes using temp files to prevent data corruption
 - Todo IDs are UUIDs for uniqueness
 - Timestamps are ISO 8601 format with second precision
-- Default todo storage location: `~/.todos.yaml`
+- Default todo storage location: `~/.todos.yaml` (customizable via `TODO_FILE` environment variable)
 
 ## MCP Tools Exposed
 

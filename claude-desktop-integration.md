@@ -19,12 +19,15 @@ Add the following configuration to your Claude Desktop MCP settings file:
       "args": ["/path/to/MCPPoc/main.py"],
       "cwd": "/path/to/MCPPoc",
       "env": {
-        "TODO_FILE": "~/.claude_todos.yaml"
+        "LOG_LEVEL": "INFO",
+        "LOG_FILE": "~/.todo-mcp-server.log"
       }
     }
   }
 }
 ```
+
+**Important**: The above configuration uses the default todo file location (`~/.todos.yaml`) with basic logging. See [Custom Configuration](#custom-todo-file-location) below for customization options.
 
 ### 2. Environment Setup
 
@@ -119,11 +122,21 @@ Claude: I'll remove the "Buy birthday gift" task from your list.
 You now have 1 pending task remaining: "Finish project report"
 ```
 
-## Advanced Integration Features
+## Todo File Location
+
+### Default Location
+
+By **default**, the MCP server stores todos in `~/.todos.yaml` (your home directory). This requires **no configuration** - the server will automatically create and manage this file.
 
 ### Custom Todo File Location
 
-Set a custom location for your todos by modifying the environment variable:
+You may want to customize the todo file location for:
+- **Organization**: Keep todos in Documents folder
+- **Backup**: Store in cloud-synced directory  
+- **Separation**: Different files for work/personal todos
+- **Security**: Use encrypted filesystem location
+
+Set a custom location by adding the `TODO_FILE` environment variable:
 
 ```json
 {
@@ -133,7 +146,8 @@ Set a custom location for your todos by modifying the environment variable:
       "args": ["/path/to/MCPPoc/main.py"],
       "cwd": "/path/to/MCPPoc",
       "env": {
-        "TODO_FILE": "/Users/yourname/Documents/my-todos.yaml"
+        "TODO_FILE": "~/Documents/my-todos.yaml",
+        "LOG_LEVEL": "INFO"
       }
     }
   }
@@ -223,7 +237,6 @@ Configure logging through environment variables:
       "args": ["/path/to/MCPPoc/main.py"],
       "cwd": "/path/to/MCPPoc",
       "env": {
-        "TODO_FILE": "~/.claude_todos.yaml",
         "LOG_LEVEL": "DEBUG",
         "LOG_FILE": "/tmp/todo-mcp-server.log"
       }
@@ -253,9 +266,9 @@ Configure logging through environment variables:
 
 **DEBUG Level** (detailed troubleshooting):
 ```
-2025-01-15T10:30:15 - todo-mcp-server - DEBUG - Loading todos from /home/user/.claude_todos.yaml
+2025-01-15T10:30:15 - todo-mcp-server - DEBUG - Loading todos from /home/user/.todos.yaml
 2025-01-15T10:30:15 - todo-mcp-server - DEBUG - Loaded 3 todos from file
-2025-01-15T10:30:22 - todo-mcp-server - DEBUG - Saving 4 todos to /home/user/.claude_todos.yaml
+2025-01-15T10:30:22 - todo-mcp-server - DEBUG - Saving 4 todos to /home/user/.todos.yaml
 2025-01-15T10:30:22 - todo-mcp-server - DEBUG - Successfully saved 4 todos with secure permissions
 ```
 

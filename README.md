@@ -316,9 +316,28 @@ WORKDIR /home/todouser
 
 ## Configuration
 
-Currently uses hardcoded configuration:
-- **Storage Location**: `~/.todos.yaml`
-- **Timestamp Format**: ISO 8601 with second precision
+### Environment Variables
+
+- **`TODO_FILE`**: Custom location for todo storage (default: `~/.todos.yaml`)
+- **`LOG_LEVEL`**: Logging verbosity - DEBUG, INFO, WARNING, ERROR (default: `DEBUG`)
+- **`LOG_FILE`**: Log output file path (default: `~/.todo-mcp-server.log`)
+
+### Other Settings
+
+- **Timestamp Format**: ISO 8601 with second precision (not configurable)
+
+### Usage Examples
+
+```bash
+# Use custom todo file location
+TODO_FILE="~/Documents/my-todos.yaml" python main.py
+
+# Different log level and file
+LOG_LEVEL=INFO LOG_FILE=/tmp/mcp-server.log python main.py
+
+# Combined configuration
+TODO_FILE="~/work-todos.yaml" LOG_LEVEL=DEBUG LOG_FILE=/tmp/debug.log python main.py
+```
 
 ## Dependencies
 

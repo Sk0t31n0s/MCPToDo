@@ -33,8 +33,8 @@ from ruamel.yaml import YAML
 # Configuration
 # ----------------------------------------------------------------------
 
-# Default location for storing todos (can be customized later)
-TODO_FILE = Path.home() / ".todos.yaml"
+# Default location for storing todos (customizable via TODO_FILE environment variable)
+TODO_FILE = Path(os.getenv("TODO_FILE", str(Path.home() / ".todos.yaml"))).expanduser()
 
 # Initialize YAML parser/writer
 yaml = YAML()
@@ -46,12 +46,13 @@ logger = logging.getLogger("todo-mcp-server")
 
 
 def setup_logging():
-    """Setup logging configuration based on environment variables."""
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    log_format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    """Setup logging configuration with default debug logging and file output."""
+    # Default to DEBUG level for better troubleshooting
+    log_level = os.getenv("LOG_LEVEL", "DEBUG").upper()
+    log_format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s")
     
     # Configure the logger
-    logger.setLevel(getattr(logging, log_level, logging.INFO))
+    logger.setLevel(getattr(logging, log_level, logging.DEBUG))
     
     # Create console handler if not already present
     if not logger.handlers:
@@ -59,14 +60,23 @@ def setup_logging():
         handler.setFormatter(logging.Formatter(log_format))
         logger.addHandler(handler)
     
-    # Also log to file if specified
-    log_file = os.getenv("LOG_FILE")
-    if log_file:
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setFormatter(logging.Formatter(log_format))
-        logger.addHandler(file_handler)
+    # Default log file location
+    default_log_file = Path.home() / ".todo-mcp-server.log"
+    log_file = os.getenv("LOG_FILE", str(default_log_file))
     
-    logger.info(f"Logging configured: level={log_level}, file={log_file or 'None'}")
+    if log_file:
+        try:
+            # Ensure log file directory exists
+            Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setFormatter(logging.Formatter(log_format))
+            logger.addHandler(file_handler)
+        except Exception as e:
+            logger.error(f"Failed to setup file logging to {log_file}: {e}")
+    
+    logger.info(f"Logging configured: level={log_level}, file={log_file}")
+    logger.debug(f"Todo file location: {TODO_FILE}")
+    logger.debug(f"Todo file exists: {TODO_FILE.exists()}")
 
 # ----------------------------------------------------------------------
 # Helper Functions
@@ -96,23 +106,45 @@ def save_todos(data: dict) -> None:
     """Safely save todos to YAML using atomic write to prevent corruption."""
     todo_count = len(data.get("todos", []))
     logger.debug(f"Saving {todo_count} todos to {TODO_FILE}")
+    logger.debug(f"Data to save: {data}")
+    
+    # Ensure parent directory exists
+    TODO_FILE.parent.mkdir(parents=True, exist_ok=True)
+    logger.debug(f"Parent directory {TODO_FILE.parent} exists: {TODO_FILE.parent.exists()}")
     
     # Create temp file in same directory to avoid cross-device issues
     tmp_fd, tmp_path = tempfile.mkstemp(dir=TODO_FILE.parent)
+    logger.debug(f"Created temp file: {tmp_path}")
+    
     try:
         with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_file:
+            logger.debug("Writing data to temp file")
             yaml.dump(data, tmp_file)
+            tmp_file.flush()  # Ensure data is written
+            os.fsync(tmp_file.fileno())  # Force write to disk
+        
+        logger.debug(f"Temp file size: {os.path.getsize(tmp_path)} bytes")
+        logger.debug(f"Replacing {TODO_FILE} with {tmp_path}")
         os.replace(tmp_path, TODO_FILE)  # atomic rename
+        
         # Set secure file permissions (600 = rw-------)
         os.chmod(TODO_FILE, 0o600)
+        final_size = os.path.getsize(TODO_FILE)
         logger.debug(f"Successfully saved {todo_count} todos with secure permissions")
+        logger.debug(f"Final file size: {final_size} bytes")
+        logger.info(f"Todo file saved successfully: {TODO_FILE} ({final_size} bytes)")
+        
     except Exception as e:
         logger.error(f"Failed to save todos: {e}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         # cleanup temp file on error
         try:
             os.unlink(tmp_path)
-        except:
-            pass  # temp file might already be cleaned up
+            logger.debug(f"Cleaned up temp file: {tmp_path}")
+        except Exception as cleanup_e:
+            logger.debug(f"Failed to cleanup temp file {tmp_path}: {cleanup_e}")
         raise
 
 
@@ -140,7 +172,10 @@ def list_todos() -> List[dict]:
 def add_todo(description: str) -> dict:
     """Add a new todo item with ID, pending status, and created timestamp."""
     logger.info(f"MCP Request: add_todo(description='{description}')")
+    logger.debug("Loading existing todos")
     data = load_todos()
+    logger.debug(f"Current todos count before adding: {len(data['todos'])}")
+    
     new_item = {
         "id": str(uuid.uuid4()),  # unique identifier
         "description": description,
@@ -148,9 +183,19 @@ def add_todo(description: str) -> dict:
         "created_at": current_timestamp(),
         "completed_at": None
     }
+    logger.debug(f"Created new todo item: {new_item}")
+    
     data["todos"].append(new_item)
+    logger.debug(f"Todos count after adding: {len(data['todos'])}")
+    logger.debug("About to save todos to file")
+    
     save_todos(data)
     logger.info(f"MCP Response: add_todo created todo with ID {new_item['id']}")
+    
+    # Verify the save worked by reloading
+    verification_data = load_todos()
+    logger.debug(f"Verification: reloaded {len(verification_data['todos'])} todos from file")
+    
     return new_item
 
 
@@ -257,6 +302,8 @@ async def handle_list_tools():
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: dict):
     """Handle tool calls"""
+    logger.debug(f"MCP tool call received: {name} with arguments: {arguments}")
+    
     if name == "list_todos":
         result = list_todos()
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
@@ -264,8 +311,11 @@ async def handle_call_tool(name: str, arguments: dict):
     elif name == "add_todo":
         description = arguments.get("description")
         if not description:
+            logger.warning("add_todo called without description parameter")
             return [TextContent(type="text", text="Error: description parameter is required")]
+        logger.debug(f"Calling add_todo with description: '{description}'")
         result = add_todo(description)
+        logger.debug(f"add_todo returned: {result}")
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
     
     elif name == "complete_todo":
