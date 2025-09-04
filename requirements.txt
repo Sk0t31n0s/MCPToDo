@@ -1,0 +1,11 @@
+# Core MCP server framework
+mcp>=0.2.0
+
+# YAML parsing and safe read/write
+ruamel.yaml>=0.18.6
+
+# For testing
+pytest>=8.3.0
+
+# For linting / style checks
+flake8>=7.1.0
